@@ -1,10 +1,10 @@
 generator client {
   provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 enum ProfileProvider {
@@ -56,71 +56,91 @@ enum ImportanceLevel {
 }
 
 model User {
-  id               String           @id @default(uuid()) @db.Uuid
-  email            String           @unique @db.VarChar(320)
-  displayName      String?          @db.VarChar(120)
-  passwordHash     String           @db.VarChar(255)
+  id               String            @id @default(uuid()) @db.Uuid
+  email            String            @unique @db.VarChar(320)
+  displayName      String?           @db.VarChar(120)
+  passwordHash     String?           @db.VarChar(255)
+
+  provider         String?           @db.VarChar(20)
+  providerId       String?           @db.VarChar(191)
+
   candidateProfile CandidateProfile?
-  createdAt        DateTime         @default(now())
-  updatedAt        DateTime         @updatedAt
+
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  @@unique([provider, providerId])
 }
 
 model CandidateProfile {
-  id          String        @id @default(uuid()) @db.Uuid
-  userId      String        @unique @db.Uuid
-  headline    String?       @db.VarChar(240)
-  bio         String?
-  experience  String?
-  education   String?
-  graduationYear Int?
+  id              String        @id @default(uuid()) @db.Uuid
+  userId          String        @unique @db.Uuid
+
+  headline        String?       @db.VarChar(240)
+  bio             String?
+  education       String?
+  graduationYear  Int?
   experienceLevel String?       @db.VarChar(80)
-  targetRole String?            @db.VarChar(160)
-  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  profileLinks ProfileLink[]
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  targetRole      String?       @db.VarChar(160)
+
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  profileLinks    ProfileLink[]
+
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 }
 
 model ProfileLink {
-  id                 String          @id @default(uuid()) @db.Uuid
-  candidateProfileId String          @db.Uuid
+  id                 String           @id @default(uuid()) @db.Uuid
+  candidateProfileId String           @db.Uuid
+
   provider           ProfileProvider
-  url                String          @db.VarChar(2048)
-  label              String?         @db.VarChar(120)
+  url                String           @db.VarChar(2048)
+  label              String?          @db.VarChar(120)
+
   candidateProfile   CandidateProfile @relation(fields: [candidateProfileId], references: [id], onDelete: Cascade)
-  createdAt          DateTime        @default(now())
-  updatedAt          DateTime        @updatedAt
+
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
 
   @@unique([candidateProfileId, provider, url])
   @@index([candidateProfileId, provider])
 }
 
 model Company {
-  id                   String               @id @default(uuid()) @db.Uuid
-  name                 String               @unique @db.VarChar(160)
-  slug                 String               @unique @db.VarChar(180)
+  id                   String                @id @default(uuid()) @db.Uuid
+
+  name                 String                @unique @db.VarChar(160)
+  slug                 String                @unique @db.VarChar(180)
   description          String?
-  website              String?              @db.VarChar(2048)
-  logoUrl              String?              @db.VarChar(2048)
-  isActive             Boolean              @default(true)
+  website              String?               @db.VarChar(2048)
+  logoUrl              String?               @db.VarChar(2048)
+  isActive             Boolean               @default(true)
+
   roles                Role[]
   interviewExperiences InterviewExperience[]
-  createdAt            DateTime             @default(now())
-  updatedAt            DateTime             @updatedAt
+
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
 }
 
 model Role {
-  id                   String               @id @default(uuid()) @db.Uuid
-  companyId            String               @db.Uuid
-  name                 String               @db.VarChar(160)
-  slug                 String               @db.VarChar(180)
+  id                   String                @id @default(uuid()) @db.Uuid
+  companyId            String                @db.Uuid
+
+  name                 String                @db.VarChar(160)
+  slug                 String                @db.VarChar(180)
   description          String?
-  isActive             Boolean              @default(true)
-  company              Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  isActive             Boolean               @default(true)
+
+  company              Company               @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
   interviewExperiences InterviewExperience[]
   topicImportances     CompanyRoleTopic[]
-  createdAt            DateTime             @default(now())
-  updatedAt            DateTime             @updatedAt
+
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
 
   @@unique([companyId, slug])
   @@index([companyId, isActive])
@@ -128,15 +148,22 @@ model Role {
 
 model Topic {
   id               String             @id @default(uuid()) @db.Uuid
+
   name             String             @unique @db.VarChar(120)
   slug             String             @unique @db.VarChar(140)
   category         String             @db.VarChar(120)
   description      String?
+  isActive         Boolean            @default(true)
+
   parentTopicId    String?            @db.Uuid
+
   parentTopic      Topic?             @relation("TopicHierarchy", fields: [parentTopicId], references: [id], onDelete: SetNull)
+
   childTopics      Topic[]            @relation("TopicHierarchy")
+
   questionTopics   QuestionTopic[]
   roleImportances  CompanyRoleTopic[]
+
   createdAt        DateTime           @default(now())
   updatedAt        DateTime           @updatedAt
 
@@ -146,20 +173,29 @@ model Topic {
 
 model InterviewExperience {
   id             String              @id @default(uuid()) @db.Uuid
+
   companyId      String              @db.Uuid
   roleId         String              @db.Uuid
+
   interviewYear  Int
   roundType      InterviewRoundType
   outcome        InterviewOutcome?
+
   experienceText String
+
   dataSourceType DataSourceType
   sourceName     String              @db.VarChar(160)
   sourceUrl      String?             @db.VarChar(2048)
+
   provenance     String
   confidence     Float
+
   company        Company             @relation(fields: [companyId], references: [id], onDelete: Restrict)
+
   role           Role                @relation(fields: [roleId], references: [id], onDelete: Restrict)
+
   questions      InterviewQuestion[]
+
   createdAt      DateTime            @default(now())
   updatedAt      DateTime            @updatedAt
 
@@ -169,20 +205,28 @@ model InterviewExperience {
 }
 
 model InterviewQuestion {
-  id                    String               @id @default(uuid()) @db.Uuid
-  questionText          String
+  id                     String               @id @default(uuid()) @db.Uuid
+
+  questionText           String
   normalizedQuestionText String?              @db.VarChar(2000)
-  difficulty            Difficulty
-  sourceExperienceId    String?              @db.Uuid
-  dataSourceType        DataSourceType
-  sourceName            String               @db.VarChar(160)
-  provenance            String
-  confidence            Float
-  metadata              Json?
-  sourceExperience      InterviewExperience? @relation(fields: [sourceExperienceId], references: [id], onDelete: SetNull)
-  topics                QuestionTopic[]
-  createdAt             DateTime             @default(now())
-  updatedAt             DateTime             @updatedAt
+
+  difficulty             Difficulty
+
+  sourceExperienceId     String?              @db.Uuid
+
+  dataSourceType         DataSourceType
+  sourceName             String               @db.VarChar(160)
+  provenance             String
+  confidence             Float
+
+  metadata               Json?
+
+  sourceExperience       InterviewExperience? @relation(fields: [sourceExperienceId], references: [id], onDelete: SetNull)
+
+  topics                 QuestionTopic[]
+
+  createdAt              DateTime             @default(now())
+  updatedAt              DateTime             @updatedAt
 
   @@index([difficulty])
   @@index([sourceExperienceId])
@@ -190,10 +234,12 @@ model InterviewQuestion {
 }
 
 model QuestionTopic {
-  questionId String            @db.Uuid
-  topicId    String            @db.Uuid
+  questionId String @db.Uuid
+  topicId    String @db.Uuid
+
   question   InterviewQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
   topic      Topic             @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
   createdAt  DateTime          @default(now())
 
   @@id([questionId, topicId])
@@ -202,17 +248,24 @@ model QuestionTopic {
 
 model CompanyRoleTopic {
   id             String          @id @default(uuid()) @db.Uuid
+
   roleId         String          @db.Uuid
   topicId        String          @db.Uuid
+
   importance     ImportanceLevel
   weight         Decimal?        @db.Decimal(5, 2)
+
   dataSourceType DataSourceType
   sourceName     String          @db.VarChar(160)
   sourceUrl      String?         @db.VarChar(2048)
+
   provenance     String
   confidence     Float
+
   role           Role            @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
   topic          Topic           @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
 
